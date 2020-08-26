@@ -30,7 +30,7 @@ impl InputData {
     let mut csv_input = Reader::from_reader(file);
     for (idx, record) in csv_input.records().enumerate() {
       let record = record?;
-      let mut row: Row;
+      let mut row = Row::new();
       for (field_idx, field) in record.iter().enumerate() {
         if idx == 0 {
           if field_idx == result_position {
@@ -41,7 +41,6 @@ impl InputData {
             data.attribute_map.insert(String::from(field), attribute);
           }
         } else {
-          row = Row::new();
           if field_idx == result_position {
             row.result = String::from(field);
             if !data.result_variants.contains(&row.result) {
@@ -65,11 +64,26 @@ impl InputData {
           }
         }
       }
+      if idx != 0 {
+        data.rows.push(row);
+      }
     }
     Ok(data)
   }
 }
 
+impl Display for InputData {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    writeln!(f, "Attribute names: {:?}", self.attribute_names)?;
+    writeln!(f, "Result name: {}", self.result_name)?;
+    writeln!(f, "Result variants: {:?}", self.result_variants)?;
+    writeln!(f, "Attributes: {:?}", self.attribute_map)?;
+    writeln!(f, "No. of rows: {}", self.rows.len())?;
+    Ok(())
+  }
+}
+
+#[derive(Debug)]
 struct Attribute {
   variants: Vec<String>,
 }
