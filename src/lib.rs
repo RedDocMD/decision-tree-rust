@@ -113,19 +113,6 @@ impl Row {
   }
 }
 
-impl Clone for Row {
-  fn clone(&self) -> Self {
-    let mut values = HashMap::new();
-    for (key, value) in self.values.iter() {
-      values.insert(key.clone(), value.clone());
-    }
-    Self {
-      result: self.result.clone(),
-      values,
-    }
-  }
-}
-
 pub struct DecisionTree {
   attribute: Option<String>,
   leaf_value: Option<String>,
