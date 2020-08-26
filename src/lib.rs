@@ -50,7 +50,7 @@ impl InputData {
             if field_idx < result_position {
               lookup_idx = field_idx;
             } else {
-              lookup_idx = field_idx + 1;
+              lookup_idx = field_idx - 1;
             }
             let attribute_name = data.attribute_names.get(lookup_idx).unwrap();
             let field = String::from(field);
