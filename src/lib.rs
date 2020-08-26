@@ -31,6 +31,9 @@ impl InputData {
     for (idx, record) in csv_input.records().enumerate() {
       let record = record?;
       let mut row = Row::new();
+      if result_position >= record.len() {
+        panic!("Result position out of index");
+      }
       for (field_idx, field) in record.iter().enumerate() {
         if idx == 0 {
           if field_idx == result_position {
@@ -214,8 +217,15 @@ fn count_results(rows: &[Row]) -> HashMap<&String, i32> {
 
 fn entropy(rows: &[Row]) -> f64 {
   let total = rows.len() as f64;
-  let counter = count_results(rows);
+  let mut counter = count_results(rows);
   let mut entropy: f64 = 0.0;
+  let most_common_attribute = most_common(rows);
+  if counter.contains_key(&String::from("?")) {
+    let unknown_count = counter[&String::from("?")];
+    counter.remove(&String::from("?"));
+    let most_common_count = counter[&most_common_attribute];
+    counter.insert(&most_common_attribute, most_common_count + unknown_count);
+  }
   for (_, count) in counter.iter() {
     let fraction = *count as f64 / total;
     if *count != 0 {
