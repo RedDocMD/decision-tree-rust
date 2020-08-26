@@ -162,7 +162,7 @@ impl Display for DecisionTree {
   }
 }
 
-fn ida3_internal(rows: &[Row], data: &InputData, tree: &mut DecisionTree) {
+fn ida3_internal(rows: &[&Row], data: &InputData, tree: &mut DecisionTree) {
   const EPS: f64 = 1e-6;
   let current_entropy = entropy(rows);
   if current_entropy.abs() <= EPS {
@@ -189,11 +189,15 @@ fn ida3_internal(rows: &[Row], data: &InputData, tree: &mut DecisionTree) {
 
 pub fn ida3(data: &InputData) -> DecisionTree {
   let mut tree = DecisionTree::new();
-  ida3_internal(&data.rows, data, &mut tree);
+  let mut ref_vec = Vec::new();
+  for row in &data.rows {
+    ref_vec.push(row);
+  }
+  ida3_internal(ref_vec.as_slice(), data, &mut tree);
   tree
 }
 
-fn most_common(rows: &[Row]) -> String {
+fn most_common(rows: &[&Row]) -> String {
   let counter = count_results(rows);
   let mut max_count = 0;
   let mut max_value = &String::new();
@@ -206,7 +210,7 @@ fn most_common(rows: &[Row]) -> String {
   (*max_value).clone()
 }
 
-fn count_results(rows: &[Row]) -> HashMap<&String, i32> {
+fn count_results<'a>(rows: &'a [&Row]) -> HashMap<&'a String, i32> {
   let mut counter = HashMap::new();
   for row in rows {
     let before = *counter.get(&row.result).unwrap_or(&0);
@@ -215,7 +219,7 @@ fn count_results(rows: &[Row]) -> HashMap<&String, i32> {
   counter
 }
 
-fn entropy(rows: &[Row]) -> f64 {
+fn entropy(rows: &[&Row]) -> f64 {
   let total = rows.len() as f64;
   let mut counter = count_results(rows);
   let mut entropy: f64 = 0.0;
@@ -235,23 +239,23 @@ fn entropy(rows: &[Row]) -> f64 {
   entropy
 }
 
-fn partition_by_attribute<'a>(
-  rows: &[Row],
+fn partition_by_attribute<'a, 'b>(
+  rows: &[&'b Row],
   data: &'a InputData,
   attribute: &str,
-) -> HashMap<&'a String, Vec<Row>> {
+) -> HashMap<&'a String, Vec<&'b Row>> {
   let mut partitions = HashMap::new();
   for variant in &data.attribute_map.get(attribute).unwrap().variants {
-    partitions.insert(variant, Vec::<Row>::new());
+    partitions.insert(variant, Vec::<&Row>::new());
   }
   for row in rows {
     let variant = row.values.get(attribute).unwrap();
-    partitions.get_mut(variant).unwrap().push(row.clone());
+    partitions.get_mut(variant).unwrap().push(row);
   }
   return partitions;
 }
 
-fn entropy_gain(rows: &[Row], data: &InputData, attribute: &str) -> f64 {
+fn entropy_gain(rows: &[&Row], data: &InputData, attribute: &str) -> f64 {
   let original_entropy = entropy(rows);
   let partitions = partition_by_attribute(rows, data, attribute);
   let total_len = rows.len() as f64;
@@ -264,7 +268,7 @@ fn entropy_gain(rows: &[Row], data: &InputData, attribute: &str) -> f64 {
 }
 
 fn best_attribute(
-  rows: &[Row],
+  rows: &[&Row],
   data: &InputData,
   completed_attributes: &[String],
 ) -> Option<String> {
