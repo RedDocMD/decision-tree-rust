@@ -1,8 +1,12 @@
+use csv::Reader;
 use std::collections::HashMap;
+use std::error::Error;
+use std::fs::File;
 
 pub struct InputData {
   attribute_names: Vec<String>,
   attribute_map: HashMap<String, Attribute>,
+  result_name: String,
   result_variants: Vec<String>,
   rows: Vec<Row>,
 }
@@ -12,9 +16,55 @@ impl InputData {
     InputData {
       attribute_names: Vec::new(),
       attribute_map: HashMap::new(),
+      result_name: String::new(),
       result_variants: Vec::new(),
       rows: Vec::new(),
     }
+  }
+
+  pub fn from_file(filename: &str, result_position: usize) -> Result<InputData, Box<dyn Error>> {
+    let mut data = InputData::new();
+    let file = File::open(filename)?;
+    let mut csv_input = Reader::from_reader(file);
+    for (idx, record) in csv_input.records().enumerate() {
+      let record = record?;
+      let mut row: Row;
+      for (field_idx, field) in record.iter().enumerate() {
+        if idx == 0 {
+          if field_idx == result_position {
+            data.result_name = String::from(field);
+          } else {
+            data.attribute_names.push(String::from(field));
+            let attribute = Attribute::new();
+            data.attribute_map.insert(String::from(field), attribute);
+          }
+        } else {
+          row = Row::new();
+          if field_idx == result_position {
+            row.result = String::from(field);
+            if !data.result_variants.contains(&row.result) {
+              data.result_variants.push(row.result.clone());
+            }
+          } else {
+            let lookup_idx: usize;
+            if field_idx < result_position {
+              lookup_idx = field_idx;
+            } else {
+              lookup_idx = field_idx + 1;
+            }
+            let attribute_name = data.attribute_names.get(lookup_idx).unwrap();
+            let field = String::from(field);
+            row.values.insert((*attribute_name).clone(), field.clone());
+            let attribute_variants =
+              &mut data.attribute_map.get_mut(attribute_name).unwrap().variants;
+            if !attribute_variants.contains(&field) {
+              attribute_variants.push(field);
+            }
+          }
+        }
+      }
+    }
+    Ok(data)
   }
 }
 
@@ -22,9 +72,26 @@ struct Attribute {
   variants: Vec<String>,
 }
 
+impl Attribute {
+  fn new() -> Self {
+    Attribute {
+      variants: Vec::new(),
+    }
+  }
+}
+
 struct Row {
   result: String,
   values: HashMap<String, String>,
+}
+
+impl Row {
+  fn new() -> Self {
+    Row {
+      result: String::new(),
+      values: HashMap::new(),
+    }
+  }
 }
 
 impl Clone for Row {
