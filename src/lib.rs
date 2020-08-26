@@ -1,7 +1,9 @@
 use csv::Reader;
 use std::collections::HashMap;
 use std::error::Error;
+use std::fmt::{Display, Formatter};
 use std::fs::File;
+use std::iter;
 
 pub struct InputData {
   attribute_names: Vec<String>,
@@ -121,6 +123,24 @@ impl DecisionTree {
       leaf_value: None,
       children: HashMap::new(),
       previous_attributes: Vec::new(),
+    }
+  }
+}
+
+impl Display for DecisionTree {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    let padding: String = iter::repeat(" ")
+      .take(self.previous_attributes.len())
+      .collect();
+    match &self.attribute {
+      None => write!(f, "{}{}\n", padding, self.leaf_value.as_ref().unwrap()),
+      Some(_) => {
+        for (variant, tree) in self.children.iter() {
+          write!(f, "\n{}{} ", padding, variant)?;
+          tree.fmt(f)?;
+        }
+        Ok(())
+      }
     }
   }
 }
