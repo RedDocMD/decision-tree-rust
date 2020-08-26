@@ -3,6 +3,7 @@ use std::collections::HashMap;
 pub struct InputData {
   attribute_names: Vec<String>,
   attribute_map: HashMap<String, Attribute>,
+  result_variants: Vec<String>,
   rows: Vec<Row>,
 }
 
@@ -11,7 +12,7 @@ struct Attribute {
 }
 
 struct Row {
-  result: bool,
+  result: String,
   values: HashMap<String, String>,
 }
 
@@ -22,7 +23,7 @@ impl Clone for Row {
       values.insert(key.clone(), value.clone());
     }
     Self {
-      result: self.result,
+      result: self.result.clone(),
       values,
     }
   }
@@ -30,13 +31,13 @@ impl Clone for Row {
 
 pub struct DecisionTree {
   attribute: Option<String>,
-  leaf_value: Option<bool>,
+  leaf_value: Option<String>,
   children: HashMap<String, Box<DecisionTree>>,
   previous_attributes: Vec<String>,
 }
 
 impl DecisionTree {
-  pub fn new() -> Self {
+  fn new() -> Self {
     DecisionTree {
       attribute: None,
       leaf_value: None,
@@ -75,30 +76,39 @@ pub fn ida3(data: &InputData) -> DecisionTree {
   tree
 }
 
-fn most_common(rows: &[Row]) -> bool {
-  let (true_count, false_count) = count_results(rows);
-  true_count > false_count
-}
-
-fn count_results(rows: &[Row]) -> (i32, i32) {
-  let mut true_count = 0;
-  let mut false_count = 0;
-  for row in rows {
-    if row.result {
-      true_count += 1;
-    } else {
-      false_count += 1;
+fn most_common(rows: &[Row]) -> String {
+  let counter = count_results(rows);
+  let mut max_count = 0;
+  let mut max_value = &String::new();
+  for (value, count) in counter.iter() {
+    if *count >= max_count {
+      max_count = *count;
+      max_value = *value;
     }
   }
-  (true_count, false_count)
+  (*max_value).clone()
+}
+
+fn count_results(rows: &[Row]) -> HashMap<&String, i32> {
+  let mut counter = HashMap::new();
+  for row in rows {
+    let before = *counter.get(&row.result).unwrap_or(&0);
+    counter.insert(&row.result, before + 1);
+  }
+  counter
 }
 
 fn entropy(rows: &[Row]) -> f64 {
-  let (true_count, false_count) = count_results(rows);
   let total = rows.len() as f64;
-  let true_fraction = true_count as f64 / total;
-  let false_fraction = false_count as f64 / total;
-  -true_fraction * true_fraction.ln() - false_fraction * false_fraction.ln()
+  let counter = count_results(rows);
+  let mut entropy: f64 = 0.0;
+  for (_, count) in counter.iter() {
+    let fraction = *count as f64 / total;
+    if *count != 0 {
+      entropy += -fraction * fraction.ln();
+    }
+  }
+  entropy
 }
 
 fn partition_by_attribute<'a>(
