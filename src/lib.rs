@@ -7,6 +7,17 @@ pub struct InputData {
   rows: Vec<Row>,
 }
 
+impl InputData {
+  fn new() -> Self {
+    InputData {
+      attribute_names: Vec::new(),
+      attribute_map: HashMap::new(),
+      result_variants: Vec::new(),
+      rows: Vec::new(),
+    }
+  }
+}
+
 struct Attribute {
   variants: Vec<String>,
 }
