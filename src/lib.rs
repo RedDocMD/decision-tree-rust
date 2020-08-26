@@ -1,4 +1,4 @@
-use csv::Reader;
+use csv::ReaderBuilder;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -27,7 +27,7 @@ impl InputData {
   pub fn from_file(filename: &str, result_position: usize) -> Result<InputData, Box<dyn Error>> {
     let mut data = InputData::new();
     let file = File::open(filename)?;
-    let mut csv_input = Reader::from_reader(file);
+    let mut csv_input = ReaderBuilder::new().has_headers(false).from_reader(file);
     for (idx, record) in csv_input.records().enumerate() {
       let record = record?;
       let mut row = Row::new();
@@ -147,10 +147,10 @@ impl Display for DecisionTree {
       .take(self.previous_attributes.len())
       .collect();
     match &self.attribute {
-      None => write!(f, "{}{}\n", padding, self.leaf_value.as_ref().unwrap()),
-      Some(_) => {
+      None => write!(f, "\n{}{}", padding, self.leaf_value.as_ref().unwrap()),
+      Some(attribute) => {
         for (variant, tree) in self.children.iter() {
-          write!(f, "\n{}{} ", padding, variant)?;
+          write!(f, "\n{}{} -> {} ", padding, attribute, variant)?;
           tree.fmt(f)?;
         }
         Ok(())
@@ -171,11 +171,13 @@ fn ida3_internal(rows: &[Row], data: &InputData, tree: &mut DecisionTree) {
     tree.attribute = Some(attribute.clone());
     let partitioned_rows = partition_by_attribute(rows, data, &attribute);
     for (variant, variant_rows) in partitioned_rows.iter() {
-      let mut sub_tree = DecisionTree::new();
-      sub_tree.previous_attributes = tree.previous_attributes.clone();
-      sub_tree.previous_attributes.push(attribute.clone());
-      ida3_internal(variant_rows, data, &mut sub_tree);
-      tree.children.insert((*variant).clone(), Box::new(sub_tree));
+      if variant_rows.len() > 0 {
+        let mut sub_tree = DecisionTree::new();
+        sub_tree.previous_attributes = tree.previous_attributes.clone();
+        sub_tree.previous_attributes.push(attribute.clone());
+        ida3_internal(variant_rows, data, &mut sub_tree);
+        tree.children.insert((*variant).clone(), Box::new(sub_tree));
+      }
     }
   } else {
     tree.leaf_value = Some(most_common(rows));
